@@ -1,0 +1,28 @@
+[package]
+name = "crosstermine"
+version = "0.1.0" # change with html_root_url in main.rs
+edition = "2021"
+authors = ["nomissbowling <nomissbowling@yahoo.co.jp>"]
+
+description = "mine for Rust with crossterm"
+keywords = ["mine", "stdout", "stdin", "crossterm", "console"]
+categories = ["development-tools", "game-development", "command-line-utilities", "command-line-interface"]
+license = "MIT"
+
+documentation = "https://docs.rs/crosstermine/"
+homepage = "https://crates.io/crates/crosstermine"
+repository = "https://github.com/nomissbowling/crosstermine"
+
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = { version = "0.8.5" }
+
+prayterm = { version = "0.1" }
+
+crossterm = { version = "0.27.0" }
+
+# crossterm = { version = "0.27.0", features = ["event-stream"] }
+# crossbeam-channel = "0.5.12"
