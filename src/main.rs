@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/crosstermine/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/crosstermine/0.1.1")]
 //! crosstermine mine for Rust with crossterm
 //!
 
@@ -9,9 +9,10 @@ use std::sync::mpsc;
 use rand;
 use rand::prelude::SliceRandom;
 
-use crossterm::event::{Event, KeyCode, KeyModifiers};
-use crossterm::event::{KeyEvent, KeyEventKind::Press};
-use crossterm::event::{MouseEvent, MouseEventKind::Down, MouseButton::Left};
+use crossterm::event::Event;
+use crossterm::event::{KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::KeyCode::{self, Left, Down, Up, Right};
+use crossterm::event::{MouseEvent, MouseEventKind, MouseButton};
 use crossterm::style::Color;
 
 use prayterm::{PrayTerm, Rgb};
@@ -109,22 +110,14 @@ impl CrossTermine {
 
   /// update
   pub fn update(&mut self, k: KeyEvent) -> bool {
+    if k.kind != KeyEventKind::Press { return false; }
     let mut f = true;
-    match k {
-    KeyEvent{kind: Press, state: _, code: KeyCode::Left, modifiers: _} |
-    KeyEvent{kind: Press, state: _, code: KeyCode::Char('h'), modifiers: _}
-    => { if self.c > 0 { self.c -= 1; } },
-    KeyEvent{kind: Press, state: _, code: KeyCode::Down, modifiers: _} |
-    KeyEvent{kind: Press, state: _, code: KeyCode::Char('j'), modifiers: _}
-    => { if self.r < self.h - 1 { self.r += 1; } },
-    KeyEvent{kind: Press, state: _, code: KeyCode::Up, modifiers: _} |
-    KeyEvent{kind: Press, state: _, code: KeyCode::Char('k'), modifiers: _}
-    => { if self.r > 0 { self.r -= 1; } },
-    KeyEvent{kind: Press, state: _, code: KeyCode::Right, modifiers: _} |
-    KeyEvent{kind: Press, state: _, code: KeyCode::Char('l'), modifiers: _}
-    => { if self.c < self.w - 1 { self.c += 1; } },
-    KeyEvent{kind: Press, state: _, code: KeyCode::Char(' '), modifiers: _}
-    => {
+    match k.code {
+    Left | KeyCode::Char('h') => { if self.c > 0 { self.c -= 1; } },
+    Down | KeyCode::Char('j') => { if self.r < self.h - 1 { self.r += 1; } },
+    Up | KeyCode::Char('k') => { if self.r > 0 { self.r -= 1; } },
+    Right | KeyCode::Char('l') => { if self.c < self.w - 1 { self.c += 1; } },
+    KeyCode::Char(' ') => {
       if self.s == 0 { self.start(); } // at the first time
       if !self.is_opened(self.r, self.c) {
         if !self.open(self.r, self.c) { self.explosion(); }
@@ -297,21 +290,33 @@ pub fn main() -> Result<(), Box<dyn Error>> {
       match ev {
       Event::Key(k) => {
         match k {
-        KeyEvent{kind: Press, state: _, code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL} => break,
-        KeyEvent{kind: Press, state: _, code: KeyCode::Char('q'), modifiers: _} => break,
-        KeyEvent{kind: Press, state: _, code: KeyCode::Char('\x1b'), modifiers: _} => break,
-        KeyEvent{kind: Press, state: _, code: KeyCode::Esc, modifiers: _} => break,
-        _ => { if m.update(k) { m.reset_t(&mut tm)?; } }
+        KeyEvent{kind: KeyEventKind::Press, state: _, code, modifiers} => {
+          match (code, modifiers) {
+          (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,
+          (KeyCode::Char('q'), _) => break,
+          (KeyCode::Char('\x1b'), _) => break,
+          (KeyCode::Esc, _) => break,
+          _ => () // through down when kind == KeyEventKind::Press
+          }
+        },
+        _ => () // through down when kind != KeyEventKind::Press
         }
+        if m.update(k) { m.reset_t(&mut tm)?; }
         if m.is_end() { m.ending(&mut tm)?; break; }
       },
-      Event::Mouse(m) => {
-        match m {
-        MouseEvent{kind: Down(Left), column: x, row: y, modifiers: _} => {
-          tm.wr(1, 47, 1, Color::Cyan, Color::Green, &msg(x, y, t))?;
+      Event::Mouse(MouseEvent{kind, column: x, row: y, modifiers: _}) => {
+        match kind {
+        MouseEventKind::Moved => {
+          tm.wr(0, 45, 1, Color::Blue, Color::Yellow, &msg(x, y, t))?;
+        },
+        MouseEventKind::Down(MouseButton::Left) => {
+          tm.wr(0, 46, 1, Color::Cyan, Color::Green, &msg(x, y, t))?;
         },
         _ => ()
         }
+      },
+      Event::Resize(_w, _h) => {
+        ()
       },
       _ => ()
       }
