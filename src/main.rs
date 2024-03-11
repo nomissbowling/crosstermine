@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/crosstermine/0.1.1")]
+#![doc(html_root_url = "https://docs.rs/crosstermine/0.1.2")]
 //! crosstermine mine for Rust with crossterm
 //!
 
@@ -108,24 +108,51 @@ impl CrossTermine {
     Ok(())
   }
 
-  /// update
-  pub fn update(&mut self, k: KeyEvent) -> bool {
+  /// up
+  pub fn up(&mut self) -> () { if self.r > 0 { self.r -= 1; } }
+
+  /// down
+  pub fn down(&mut self) -> () { if self.r < self.h - 1 { self.r += 1; } }
+
+  /// left
+  pub fn left(&mut self) -> () { if self.c > 0 { self.c -= 1; } }
+
+  /// right
+  pub fn right(&mut self) -> () { if self.c < self.w - 1 { self.c += 1; } }
+
+  /// click
+  pub fn click(&mut self) -> bool {
+    if self.s == 0 { self.start(); } // at the first time
+    if !self.is_opened(self.r, self.c) {
+      if !self.open(self.r, self.c) { self.explosion(); }
+      else {
+        if self.s + self.m == self.w*self.h { self.success(); } // not '>='
+      }
+    }
+    true
+  }
+
+  /// update_m
+  pub fn update_m(&mut self, x: u16, y: u16) -> bool {
+    if x >= 0 && x < self.w && y >= 0 && y < self.h {
+      self.c = x;
+      self.r = y;
+      true
+    } else {
+      false
+    }
+  }
+
+  /// update_k
+  pub fn update_k(&mut self, k: KeyEvent) -> bool {
     if k.kind != KeyEventKind::Press { return false; }
     let mut f = true;
     match k.code {
-    Left | KeyCode::Char('h') => { if self.c > 0 { self.c -= 1; } },
-    Down | KeyCode::Char('j') => { if self.r < self.h - 1 { self.r += 1; } },
-    Up | KeyCode::Char('k') => { if self.r > 0 { self.r -= 1; } },
-    Right | KeyCode::Char('l') => { if self.c < self.w - 1 { self.c += 1; } },
-    KeyCode::Char(' ') => {
-      if self.s == 0 { self.start(); } // at the first time
-      if !self.is_opened(self.r, self.c) {
-        if !self.open(self.r, self.c) { self.explosion(); }
-        else {
-          if self.s + self.m == self.w*self.h { self.success(); } // not '>='
-        }
-      }
-    },
+    Left | KeyCode::Char('h') => { self.left(); },
+    Down | KeyCode::Char('j') => { self.down(); },
+    Up | KeyCode::Char('k') => { self.up(); },
+    Right | KeyCode::Char('l') => { self.right(); },
+    KeyCode::Char(' ') => { self.click(); },
     _ => { f = false; }
     }
     f
@@ -288,7 +315,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     },
     Ok(ev) => {
       match ev {
-      Event::Key(k) => {
+      Ok(Event::Key(k)) => {
         match k {
         KeyEvent{kind: KeyEventKind::Press, state: _, code, modifiers} => {
           match (code, modifiers) {
@@ -301,21 +328,24 @@ pub fn main() -> Result<(), Box<dyn Error>> {
         },
         _ => () // through down when kind != KeyEventKind::Press
         }
-        if m.update(k) { m.reset_t(&mut tm)?; }
+        if m.update_k(k) { m.reset_t(&mut tm)?; }
         if m.is_end() { m.ending(&mut tm)?; break; }
       },
-      Event::Mouse(MouseEvent{kind, column: x, row: y, modifiers: _}) => {
+      Ok(Event::Mouse(MouseEvent{kind, column: x, row: y, modifiers: _})) => {
         match kind {
         MouseEventKind::Moved => {
           tm.wr(0, 45, 1, Color::Blue, Color::Yellow, &msg(x, y, t))?;
+          if m.update_m(x, y) { m.reset_t(&mut tm)?; }
         },
         MouseEventKind::Down(MouseButton::Left) => {
           tm.wr(0, 46, 1, Color::Cyan, Color::Green, &msg(x, y, t))?;
+          if m.click() { m.reset_t(&mut tm)?; }
+          if m.is_end() { m.ending(&mut tm)?; break; }
         },
         _ => ()
         }
       },
-      Event::Resize(_w, _h) => {
+      Ok(Event::Resize(_w, _h)) => {
         ()
       },
       _ => ()

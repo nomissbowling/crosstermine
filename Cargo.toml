@@ -1,6 +1,6 @@
 [package]
 name = "crosstermine"
-version = "0.1.1" # change with html_root_url in main.rs
+version = "0.1.2" # change with html_root_url in main.rs
 edition = "2021"
 authors = ["nomissbowling <nomissbowling@yahoo.co.jp>"]
 
@@ -20,7 +20,7 @@ readme = "README.md"
 [dependencies]
 rand = { version = "0.8.5" }
 
-prayterm = { version = "0.1" }
+prayterm = { version = "1.0" }
 
 crossterm = { version = "0.27.0" }
 
