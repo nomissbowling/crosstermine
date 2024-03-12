@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/crosstermine/0.3.0")]
+#![doc(html_root_url = "https://docs.rs/crosstermine/0.3.1")]
 //! crosstermine mine for Rust with crossterm
 //!
 
@@ -132,6 +132,70 @@ impl CrossTermine {
     }
     f
   }
+
+  /// proc
+  pub fn proc(&mut self, rx: &mpsc::Receiver<Result<Event, std::io::Error>>) ->
+    Result<bool, Box<dyn Error>> {
+    // thread::sleep(self.m.ms);
+    match rx.recv_timeout(self.m.ms) {
+    Err(mpsc::RecvTimeoutError::Disconnected) => Err("Disconnected".into()),
+    Err(mpsc::RecvTimeoutError::Timeout) => { // idle
+      self.status_m(3, 1, Rgb(192, 192, 192), Rgb(8, 8, 8))?;
+      self.m.tick(&mut self.v)?;
+      Ok(true)
+    },
+    Ok(ev) => {
+      Ok(match ev {
+      Ok(Event::Key(k)) => {
+        let f = match k {
+        KeyEvent{kind: KeyEventKind::Press, state: _, code, modifiers} => {
+          match (code, modifiers) {
+          (KeyCode::Char('c'), KeyModifiers::CONTROL) => false,
+          (KeyCode::Char('q'), _) => false,
+          (KeyCode::Char('\x1b'), _) => false,
+          (KeyCode::Esc, _) => false,
+          _ => true // through down when kind == KeyEventKind::Press
+          }
+        },
+        _ => true // through down when kind != KeyEventKind::Press
+        };
+        if !f { return Ok(false); }
+        if self.key(k) { self.m.reset_tick(&mut self.v)?; }
+        if self.m.is_end() { self.m.ending(&mut self.v)?; return Ok(false); }
+        true
+      },
+      Ok(Event::Mouse(MouseEvent{kind, column: x, row: y, modifiers: _})) => {
+        match kind {
+        MouseEventKind::Moved => {
+          self.status_p(5, 1, Color::Blue, Color::Yellow, x, y)?;
+          if self.m.update_m(x, y) { self.m.reset_tick(&mut self.v)?; }
+          true
+        },
+        MouseEventKind::Down(MouseButton::Left) => {
+          self.status_p(4, 1, Color::Cyan, Color::Green, x, y)?;
+          if self.m.click() { self.m.reset_tick(&mut self.v)?; }
+          if self.m.is_end() { self.m.ending(&mut self.v)?; return Ok(false); }
+          true
+        },
+        _ => true
+        }
+      },
+      Ok(Event::Resize(_w, _h)) => {
+        true
+      },
+      _ => true
+      })
+    }
+    }
+  }
+
+  /// mainloop
+  pub fn mainloop(&mut self) -> Result<(), Box<dyn Error>> {
+    let (_tx, rx) = self.v.tm.prepare_thread(self.m.ms)?;
+    loop { if !self.proc(&rx)? { break; } }
+    // handle.join()?;
+    Ok(())
+  }
 }
 
 /// main
@@ -146,59 +210,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
   // let m = MineField::new(80, 50, 12);
   let mut g = CrossTermine::new(m)?;
   g.status_t(1, 3, Color::Magenta, Rgb(240, 192, 32))?;
-
-  let (_tx, rx) = g.v.tm.prepare_thread(g.m.ms)?;
-  loop {
-    // thread::sleep(ms);
-    match rx.recv_timeout(g.m.ms) {
-    Err(mpsc::RecvTimeoutError::Disconnected) => break, // not be arrived here
-    Err(mpsc::RecvTimeoutError::Timeout) => { // idle
-      g.status_m(3, 1, Rgb(192, 192, 192), Rgb(8, 8, 8))?;
-      g.m.tick(&mut g.v)?;
-    },
-    Ok(ev) => {
-      match ev {
-      Ok(Event::Key(k)) => {
-        match k {
-        KeyEvent{kind: KeyEventKind::Press, state: _, code, modifiers} => {
-          match (code, modifiers) {
-          (KeyCode::Char('c'), KeyModifiers::CONTROL) => break,
-          (KeyCode::Char('q'), _) => break,
-          (KeyCode::Char('\x1b'), _) => break,
-          (KeyCode::Esc, _) => break,
-          _ => () // through down when kind == KeyEventKind::Press
-          }
-        },
-        _ => () // through down when kind != KeyEventKind::Press
-        }
-        if g.key(k) { g.m.reset_tick(&mut g.v)?; }
-        if g.m.is_end() { g.m.ending(&mut g.v)?; break; }
-      },
-      Ok(Event::Mouse(MouseEvent{kind, column: x, row: y, modifiers: _})) => {
-        match kind {
-        MouseEventKind::Moved => {
-          g.status_p(5, 1, Color::Blue, Color::Yellow, x, y)?;
-          if g.m.update_m(x, y) { g.m.reset_tick(&mut g.v)?; }
-        },
-        MouseEventKind::Down(MouseButton::Left) => {
-          g.status_p(4, 1, Color::Cyan, Color::Green, x, y)?;
-          if g.m.click() { g.m.reset_tick(&mut g.v)?; }
-          if g.m.is_end() { g.m.ending(&mut g.v)?; break; }
-        },
-        _ => ()
-        }
-      },
-      Ok(Event::Resize(_w, _h)) => {
-        ()
-      },
-      _ => ()
-      }
-    }
-    }
-  }
-
-  // handle.join()?;
-
+  g.mainloop()?;
   g.status_m(3, 1, Rgb(240, 192, 32), Rgb(192, 32, 240))?;
   g.status_t(2, 3, Rgb(255, 0, 0), Rgb(255, 255, 0))?;
   Ok(())
