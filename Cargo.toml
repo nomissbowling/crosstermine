@@ -1,6 +1,6 @@
 [package]
 name = "crosstermine"
-version = "0.2.0" # change with html_root_url in main.rs
+version = "0.3.0" # change with html_root_url in main.rs
 edition = "2021"
 authors = ["nomissbowling <nomissbowling@yahoo.co.jp>"]
 
