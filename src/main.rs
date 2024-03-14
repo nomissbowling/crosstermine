@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/crosstermine/0.3.1")]
+#![doc(html_root_url = "https://docs.rs/crosstermine/3.1.0")]
 //! crosstermine mine for Rust with crossterm
 //!
 
@@ -14,7 +14,9 @@ use crossterm::style::Color;
 
 use prayterm::{PrayTerm, Rgb, NopColor};
 
-use minefield::{MineField, WR};
+use minefield::MineField;
+
+use mvc_rs::View as MVCView;
 
 /// Term
 pub struct Term<T> {
@@ -24,8 +26,8 @@ pub struct Term<T> {
   pub tm: PrayTerm
 }
 
-/// trait WR for Term
-impl<T: NopColor + Clone> WR<T> for Term<T> {
+/// trait MVCView for Term
+impl<T: NopColor + Clone> MVCView<T> for Term<T> {
   /// wr
   fn wr(&mut self, x: u16, y: u16, st: u16,
     bgc: u16, fgc: u16, msg: &String) -> Result<(), Box<dyn Error>> {
