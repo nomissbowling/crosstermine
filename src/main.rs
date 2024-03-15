@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/crosstermine/3.2.0")]
+#![doc(html_root_url = "https://docs.rs/crosstermine/3.3.0")]
 //! crosstermine mine for Rust with crossterm
 //!
 
